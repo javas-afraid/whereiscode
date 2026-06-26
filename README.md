@@ -1,5 +1,7 @@
 <div align="center">
-
- <img src="logo/logo.svg" alt="VSC Logo" width="200" style="border: 2px solid #007ACC; padding: 5px;">
-  
+  <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="#007ACC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="border: 2px solid #007ACC; padding: 10px; border-radius: 8px;">
+    <circle cx="12" cy="12" r="10"></circle>
+    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+  </svg>
 </div>
