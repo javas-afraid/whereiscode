@@ -3,49 +3,201 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Workspace</title>
+    <title>Workspace Core</title>
+    
     <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/editor/editor.main.min.css">
+    
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    
     <style>
+        :root {
+            --bg-darker: #181818;
+            --bg-dark: #1f1f1f;
+            --bg-input: #2d2d2d;
+            --border-color: #3c3c3c;
+            --text-main: #cccccc;
+            --accent-blue: #007acc;
+            --accent-hover: #0062a3;
+        }
+
         body, html { 
             margin: 0; 
             padding: 0; 
             height: 100%; 
             overflow: hidden; 
-            background: #1e1e1e; 
+            background: var(--bg-darker); 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            color: var(--text-main);
         }
+
+        /* Top Bar Panel Options */
+        #top-navbar {
+            background: var(--bg-dark);
+            height: 45px;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            border-bottom: 1px solid var(--border-color);
+            gap: 12px;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        .nav-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: var(--bg-input);
+        }
+
+        /* Forms, inputs, and selectors styling */
+        input[type="text"], input[type="password"], select {
+            background: var(--bg-input);
+            color: #ffffff;
+            border: 1px solid var(--border-color);
+            padding: 5px 10px;
+            font-size: 13px;
+            border-radius: 4px;
+            outline: none;
+            height: 28px;
+            box-sizing: border-box;
+            transition: border 0.2s;
+        }
+
+        input[type="text"]:focus, input[type="password"]:focus, select:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .action-btn {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 0 14px;
+            height: 28px;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        .action-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .divider {
+            width: 1px;
+            height: 20px;
+            background: var(--border-color);
+            margin: 0 4px;
+        }
+
+        /* Main Workspace Section Grid */
         #editor-container { 
             width: 100vw; 
-            height: calc(100vh - 22px); 
+            height: calc(100vh - 67px); /* Compensating for top bar and status bar */
         }
+
+        /* VS Code Style Blue Bottom Status Bar */
         #statusBar { 
             height: 22px; 
-            background: #007acc; 
+            background: var(--accent-blue); 
             color: white; 
             display: flex; 
             align-items: center; 
-            padding: 0 10px; 
+            padding: 0 12px; 
             font-size: 12px; 
             position: absolute; 
             bottom: 0; 
             width: 100%; 
             box-sizing: border-box; 
             user-select: none;
+            justify-content: space-between;
+        }
+
+        .status-segment {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Hidden elements setup */
+        .hidden-select {
+            display: none !important;
         }
     </style>
 </head>
 <body>
 
+    <div id="top-navbar">
+        <div class="nav-section">
+            <button class="icon-btn" onclick="openFile()" title="Open Local File (Ctrl+O)">
+                <span class="material-icons-round">folder_open</span>
+            </button>
+            <button class="icon-btn" onclick="saveFile()" title="Save File (Ctrl+S)">
+                <span class="material-icons-round">save</span>
+            </button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="nav-section" id="github-controls">
+            <span class="material-icons-round" style="font-size: 20px; color: #8b949e;">cloud_sync</span>
+            <input type="password" id="ghToken" placeholder="GitHub Personal Access Token">
+            <button class="action-btn" onclick="connectGitHub()">
+                <span class="material-icons-round" style="font-size: 16px;">login</span>Connect
+            </button>
+            
+            <select id="repoSelect" onchange="onRepoSelected()" class="hidden-select">
+                <option value="">-- Select Repository --</option>
+            </select>
+
+            <select id="fileSelect" onchange="onFileSelected()" class="hidden-select">
+                <option value="">-- Select File Asset --</option>
+            </select>
+        </div>
+    </div>
+
     <div id="editor-container"></div>
     
-    <div id="statusBar">Ready | No File Open</div>
+    <div id="statusBar">
+        <div class="status-segment">
+            <span class="material-icons-round" style="font-size: 14px;">sync_alt</span>
+            <span id="statusText">System Ready</span>
+        </div>
+        <div class="status-segment">
+            <span id="languageTrack">Plain Text</span>
+            <span class="material-icons-round" style="font-size: 14px;">terminal</span>
+        </div>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/loader.min.js"></script>
     <script>
         let editor;
         let currentFilePath = null;
+        let selectedOwner = '';
+        let selectedRepo = '';
 
-        // Comprehensive language dictionary matching extensions to Monaco language IDs
+        // Universal Language Dictionaries Mapping Extension Names
         const extensionMap = {
             'js': 'javascript', 'mjs': 'javascript', 'cjs': 'javascript', 'jsx': 'javascript',
             'ts': 'typescript', 'tsx': 'typescript',
@@ -65,45 +217,46 @@
             'sh': 'shell', 'bat': 'bat', 'ps1': 'powershell'
         };
 
-        // Configure and boot up the Monaco instance
+        // Initialize and instantiate Monaco Engine Contexts
         require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs' } });
         require(['vs/editor/editor.main'], function() {
             editor = monaco.editor.create(document.getElementById('editor-container'), {
-                value: "// Welcome to your custom VS Code desktop workspace.\n// Use Ctrl + O to open a file or Ctrl + S to save.\n",
+                value: "// Custom Desktop VS Code Environment Booted Successfully.\n// Connect your GitHub Token above or open local files.\n",
                 language: 'javascript',
                 theme: 'vs-dark',
                 fontSize: 14,
                 fontFamily: "'Fira Code', 'Courier New', monospace",
                 fontLigatures: true,
-                minimap: { enabled: true },        // Native VS Code minimap sidebar
-                automaticLayout: true,            // Dynamic viewport resizing
+                minimap: { enabled: true },
+                automaticLayout: true,
                 cursorBlinking: "blink",
                 formatOnPaste: true,
-                suggestOnTriggerCharacters: true  // Deep IntelliSense support
+                suggestOnTriggerCharacters: true
             });
 
-            // Register standard VS Code hotkeys inside the editor canvas
+            // Map key shortcuts into the text buffer execution channels
             registerEditorShortcuts();
         });
 
-        // Update the bottom status bar information
-        function updateStatus(text) {
-            document.getElementById('statusBar').innerText = text;
+        function updateStatus(text, language = null) {
+            document.getElementById('statusText').innerText = text;
+            if (language) {
+                document.getElementById('languageTrack').innerText = language.toUpperCase();
+            }
         }
 
-        // Native System File Handling via Electron Bridge
+        /* --- Local Drive Native Storage Interactivity Pipelines --- */
         async function openFile() {
             const file = await window.api.openFile();
             if (file) {
                 currentFilePath = file.filePath;
                 editor.setValue(file.content);
                 
-                // Track down the extension and update language engine
                 const ext = currentFilePath.split('.').pop().toLowerCase();
                 const lang = extensionMap[ext] || 'plaintext';
                 
                 monaco.editor.setModelLanguage(editor.getModel(), lang);
-                updateStatus(`Editing: ${currentFilePath} [${lang.toUpperCase()}]`);
+                updateStatus(`Local: ${currentFilePath}`, lang);
             }
         }
 
@@ -112,55 +265,107 @@
             const savedPath = await window.api.saveFile({ filePath: currentFilePath, content });
             if (savedPath) {
                 currentFilePath = savedPath;
-                
                 const ext = currentFilePath.split('.').pop().toLowerCase();
                 const lang = extensionMap[ext] || 'plaintext';
                 
                 monaco.editor.setModelLanguage(editor.getModel(), lang);
-                updateStatus(`Saved: ${currentFilePath}`);
+                updateStatus(`Saved successfully!`, lang);
             }
         }
 
-        // Global Window Event Listeners for File Operations
+        /* --- GitHub Context Storage Extraction Subsystems --- */
+        async function connectGitHub() {
+            const token = document.getElementById('ghToken').value;
+            if (!token) return alert("Missing Authorization Token!");
+
+            updateStatus("Polling user repositories...");
+            try {
+                const repos = await window.api.fetchUserRepos(token);
+                const repoSelect = document.getElementById('repoSelect');
+                
+                repoSelect.innerHTML = '<option value="">-- Select Repository --</option>';
+                repos.forEach(repo => {
+                    const option = document.createElement('option');
+                    option.value = repo.full_name;
+                    option.textContent = repo.name;
+                    repoSelect.appendChild(option);
+                });
+
+                repoSelect.style.display = 'inline-block';
+                updateStatus("Connected to GitHub Profile Account.");
+            } catch (error) {
+                updateStatus("GitHub Connection Authentication Failure.");
+            }
+        }
+
+        async function onRepoSelected() {
+            const token = document.getElementById('ghToken').value;
+            const repoFullName = document.getElementById('repoSelect').value;
+            if (!repoFullName) return;
+
+            [selectedOwner, selectedRepo] = repoFullName.split('/');
+            updateStatus(`Indexing files for ${selectedRepo}...`);
+
+            try {
+                const contents = await window.api.fetchRepoContents(token, selectedOwner, selectedRepo, '');
+                const fileSelect = document.getElementById('fileSelect');
+                
+                fileSelect.innerHTML = '<option value="">-- Select File Asset --</option>';
+                contents.forEach(item => {
+                    if (item.type === 'file') {
+                        const option = document.createElement('option');
+                        option.value = item.path;
+                        option.textContent = item.name;
+                        fileSelect.appendChild(option);
+                    }
+                });
+
+                fileSelect.style.display = 'inline-block';
+                updateStatus(`Repository workspace locked: ${selectedRepo}`);
+            } catch (error) {
+                updateStatus("Error fetching tree structures.");
+            }
+        }
+
+        async function onFileSelected() {
+            const token = document.getElementById('ghToken').value;
+            const filePath = document.getElementById('fileSelect').value;
+            if (!filePath) return;
+
+            updateStatus(`Streaming remote asset content: ${filePath}...`);
+            try {
+                const data = await window.api.fetchRepoContents(token, selectedOwner, selectedRepo, filePath);
+                if (data && data.content) {
+                    const decodedContent = atob(data.content.replace(/\n/g, ''));
+                    currentFilePath = filePath;
+                    editor.setValue(decodedContent);
+                    
+                    const ext = filePath.split('.').pop().toLowerCase();
+                    const lang = extensionMap[ext] || 'plaintext';
+                    
+                    monaco.editor.setModelLanguage(editor.getModel(), lang);
+                    updateStatus(`Editing Git Asset: ${filePath}`, lang);
+                }
+            } catch (error) {
+                updateStatus("Failed payload data extraction extraction.");
+            }
+        }
+
+        // Global OS Listening Hooks for IO Events
         window.addEventListener('keydown', function(e) {
-            if (e.ctrlKey && e.key.toLowerCase() === 'o') {
-                e.preventDefault();
-                openFile();
-            }
-            if (e.ctrlKey && e.key.toLowerCase() === 's') {
-                e.preventDefault();
-                saveFile();
-            }
+            if (e.ctrlKey && e.key.toLowerCase() === 'o') { e.preventDefault(); openFile(); }
+            if (e.ctrlKey && e.key.toLowerCase() === 's') { e.preventDefault(); saveFile(); }
         });
 
-        // Core VS Code Shortcuts mapped straight to internal actions
+        // Register internal Monaco commands mapping core VS Code hotkeys
         function registerEditorShortcuts() {
             if (!editor) return;
 
-            // Ctrl + F -> Native Search / Find widget
-            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF, function() {
-                editor.getAction('actions.find').run();
-            });
-
-            // Ctrl + H -> Find & Replace widget
-            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyH, function() {
-                editor.getAction('actions.find').run();
-            });
-
-            // Ctrl + / -> Toggle Line Commenting
-            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.US_SLASH, function() {
-                editor.getAction('editor.action.commentLine').run();
-            });
-
-            // Shift + Alt + F -> Smart Document Formatting
-            editor.addCommand(monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF, function() {
-                editor.getAction('editor.action.formatDocument').run();
-            });
-
-            // Ctrl + P -> Open Command Palette (F1)
-            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyP, function() {
-                editor.getAction('editor.action.quickCommand').run();
-            });
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF, () => editor.getAction('actions.find').run());
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyH, () => editor.getAction('actions.find').run());
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.US_SLASH, () => editor.getAction('editor.action.commentLine').run());
+            editor.addCommand(monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF, () => editor.getAction('editor.action.formatDocument').run());
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyP, () => editor.getAction('editor.action.quickCommand').run());
         }
     </script>
 </body>
