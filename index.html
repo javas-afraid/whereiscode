@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workspace</title>
+    <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/editor/editor.main.min.css">
+    <style>
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            height: 100%; 
+            overflow: hidden; 
+            background: #1e1e1e; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        }
+        #editor-container { 
+            width: 100vw; 
+            height: calc(100vh - 22px); 
+        }
+        #statusBar { 
+            height: 22px; 
+            background: #007acc; 
+            color: white; 
+            display: flex; 
+            align-items: center; 
+            padding: 0 10px; 
+            font-size: 12px; 
+            position: absolute; 
+            bottom: 0; 
+            width: 100%; 
+            box-sizing: border-box; 
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="editor-container"></div>
+    
+    <div id="statusBar">Ready | No File Open</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/loader.min.js"></script>
+    <script>
+        let editor;
+        let currentFilePath = null;
+
+        // Comprehensive language dictionary matching extensions to Monaco language IDs
+        const extensionMap = {
+            'js': 'javascript', 'mjs': 'javascript', 'cjs': 'javascript', 'jsx': 'javascript',
+            'ts': 'typescript', 'tsx': 'typescript',
+            'html': 'html', 'htm': 'html',
+            'css': 'css', 'scss': 'scss', 'less': 'less',
+            'py': 'python', 'pyw': 'python',
+            'md': 'markdown',
+            'json': 'json', 'yaml': 'yaml', 'yml': 'yaml', 'xml': 'xml',
+            'c': 'c', 'cpp': 'cpp', 'h': 'cpp', 'hpp': 'cpp',
+            'cs': 'csharp',
+            'java': 'java',
+            'go': 'go',
+            'rs': 'rust',
+            'rb': 'ruby',
+            'php': 'php',
+            'sql': 'sql',
+            'sh': 'shell', 'bat': 'bat', 'ps1': 'powershell'
+        };
+
+        // Configure and boot up the Monaco instance
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs' } });
+        require(['vs/editor/editor.main'], function() {
+            editor = monaco.editor.create(document.getElementById('editor-container'), {
+                value: "// Welcome to your custom VS Code desktop workspace.\n// Use Ctrl + O to open a file or Ctrl + S to save.\n",
+                language: 'javascript',
+                theme: 'vs-dark',
+                fontSize: 14,
+                fontFamily: "'Fira Code', 'Courier New', monospace",
+                fontLigatures: true,
+                minimap: { enabled: true },        // Native VS Code minimap sidebar
+                automaticLayout: true,            // Dynamic viewport resizing
+                cursorBlinking: "blink",
+                formatOnPaste: true,
+                suggestOnTriggerCharacters: true  // Deep IntelliSense support
+            });
+
+            // Register standard VS Code hotkeys inside the editor canvas
+            registerEditorShortcuts();
+        });
+
+        // Update the bottom status bar information
+        function updateStatus(text) {
+            document.getElementById('statusBar').innerText = text;
+        }
+
+        // Native System File Handling via Electron Bridge
+        async function openFile() {
+            const file = await window.api.openFile();
+            if (file) {
+                currentFilePath = file.filePath;
+                editor.setValue(file.content);
+                
+                // Track down the extension and update language engine
+                const ext = currentFilePath.split('.').pop().toLowerCase();
+                const lang = extensionMap[ext] || 'plaintext';
+                
+                monaco.editor.setModelLanguage(editor.getModel(), lang);
+                updateStatus(`Editing: ${currentFilePath} [${lang.toUpperCase()}]`);
+            }
+        }
+
+        async function saveFile() {
+            const content = editor.getValue();
+            const savedPath = await window.api.saveFile({ filePath: currentFilePath, content });
+            if (savedPath) {
+                currentFilePath = savedPath;
+                
+                const ext = currentFilePath.split('.').pop().toLowerCase();
+                const lang = extensionMap[ext] || 'plaintext';
+                
+                monaco.editor.setModelLanguage(editor.getModel(), lang);
+                updateStatus(`Saved: ${currentFilePath}`);
+            }
+        }
+
+        // Global Window Event Listeners for File Operations
+        window.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key.toLowerCase() === 'o') {
+                e.preventDefault();
+                openFile();
+            }
+            if (e.ctrlKey && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                saveFile();
+            }
+        });
+
+        // Core VS Code Shortcuts mapped straight to internal actions
+        function registerEditorShortcuts() {
+            if (!editor) return;
+
+            // Ctrl + F -> Native Search / Find widget
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF, function() {
+                editor.getAction('actions.find').run();
+            });
+
+            // Ctrl + H -> Find & Replace widget
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyH, function() {
+                editor.getAction('actions.find').run();
+            });
+
+            // Ctrl + / -> Toggle Line Commenting
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.US_SLASH, function() {
+                editor.getAction('editor.action.commentLine').run();
+            });
+
+            // Shift + Alt + F -> Smart Document Formatting
+            editor.addCommand(monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF, function() {
+                editor.getAction('editor.action.formatDocument').run();
+            });
+
+            // Ctrl + P -> Open Command Palette (F1)
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyP, function() {
+                editor.getAction('editor.action.quickCommand').run();
+            });
+        }
+    </script>
+</body>
+</html>
